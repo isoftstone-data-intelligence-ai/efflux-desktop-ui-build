@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EFFLUX</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #ffffff;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+        
+        .loading-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-text {
+            position: absolute;
+            color: #000;
+            font-size: 14px;
+            font-weight: 300;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            animation: fadeInOut 2s infinite;
+            top: 140px;
+        }
+        
+        .circle {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 0, 0, 0.1);
+        }
+        
+        .circle-1 {
+            width: 100px;
+            height: 100px;
+            border-top-color: #000;
+            animation: spin 1.5s linear infinite;
+        }
+        
+        .circle-2 {
+            width: 70px;
+            height: 70px;
+            border-left-color: #000;
+            animation: spin 1.2s linear infinite reverse;
+        }
+        
+        .circle-3 {
+            width: 40px;
+            height: 40px;
+            border-bottom-color: #000;
+            animation: spin 1s linear infinite;
+        }
+        
+        .dot {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #000;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(0.8);
+                opacity: 0.8;
+            }
+            50% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes fadeInOut {
+            0%, 100% {
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+        <div class="circle circle-3"></div>
+        <div class="dot"></div>
+        <div class="loading-text">Loading</div>
+    </div>
+</body>
+</html>

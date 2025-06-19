@@ -1,0 +1,77 @@
+{
+  "name": "client-efflux-frontend",
+  "version": "1.0.0",
+  "main": "./electron/main.js",
+  "author": "benchu",
+  "private": true,
+  "scripts": {
+    "buildMain": "webpack",
+    "ele": "electron .",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "electron-is-dev": "^1.2.0",
+    "electron-store": "^6.0.1"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "asar": false,
+    "appId": "efflux",
+    "productName": "EFFLUX",
+    "copyright": "Copyright © 2025",
+    "extends": null,
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      
+    ],
+    "directories": {
+      "buildResources": "assets"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "dmg": {
+      "background": "assets/appdmg.png",
+      "icon": "assets/icon.icns",
+      "iconSize": 100,
+      "contents": [
+        {
+          "x": 380,
+          "y": 280,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 110,
+          "y": 280,
+          "type": "file"
+        }
+      ],
+      "window": {
+        "width": 500,
+        "height": 500
+      }
+    },
+    "win": {
+      "target": [
+        "msi",
+        "nsis"
+      ],
+      "icon": "assets/icon.ico",
+      "artifactName": "${productName}-Web-Setup-${version}.${ext}",
+      "publisherName": "Viking Zhang"
+    },
+    "nsis": {
+      "allowToChangeInstallationDirectory": true,
+      "oneClick": false,
+      "perMachine": false
+    }
+  }
+}
