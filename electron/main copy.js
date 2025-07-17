@@ -4,7 +4,6 @@ const { spawn } = require('child_process');
 const net = require('net');
 const fs = require('fs');
 const { execSync } = require('child_process');
-const { startServer } = require('./nextServer');
 
 // 日志记录功能
 function setupLogging() {
@@ -287,73 +286,15 @@ function getSystemEnv() {
       }
       
     } else {
-      // 在 Unix 系统上先获取系统环境变量，然后通过 source 加载用户配置
+      // 在 Unix 系统上获取环境变量
       try {
-        // 首先获取系统环境变量
-        console.log('获取系统环境变量...');
-        const systemEnvOutput = execSync('env', { encoding: 'utf8' });
-        systemEnvOutput.split('\n').forEach(line => {
+        const output = execSync('env', { encoding: 'utf8' });
+        output.split('\n').forEach(line => {
           const [key, ...valueParts] = line.split('=');
           if (key && valueParts.length > 0) {
             env[key.trim()] = valueParts.join('=').trim();
           }
         });
-        console.log('系统环境变量获取完成');
-        
-        // 然后通过 source 加载用户配置文件
-        const home = process.env.HOME || process.env.USERPROFILE;
-        if (home) {
-          // 尝试不同的 shell 配置文件
-          const shellConfigs = [
-            path.join(home, '.bash_profile'),
-            path.join(home, '.bashrc'),
-            path.join(home, '.zshrc'),
-            path.join(home, '.profile')
-          ];
-          
-          for (const config of shellConfigs) {
-            if (fs.existsSync(config)) {
-              try {
-                console.log(`使用 source 加载配置文件: ${config}`);
-                
-                // 使用 bash 或 zsh 来 source 配置文件并获取环境变量
-                let shellCommand;
-                if (config.includes('.zshrc')) {
-                  shellCommand = `zsh -c "source ${config} && env"`;
-                } else {
-                  shellCommand = `bash -c "source ${config} && env"`;
-                }
-                
-                const output = execSync(shellCommand, { encoding: 'utf8' });
-                output.split('\n').forEach(line => {
-                  const [key, ...valueParts] = line.split('=');
-                  if (key && valueParts.length > 0) {
-                    const keyName = key.trim();
-                    const value = valueParts.join('=').trim();
-                    
-                    // 对于 PATH，进行合并而不是覆盖
-                    if (keyName === 'PATH') {
-                      if (!env.PATH) {
-                        env.PATH = value;
-                      } else {
-                        env.PATH = value + ':' + env.PATH;
-                      }
-                    } else {
-                      // 用户配置文件的变量优先级更高
-                      env[keyName] = value;
-                    }
-                  }
-                });
-                
-                console.log(`成功加载配置文件: ${config}`);
-                
-              } catch (error) {
-                console.warn(`source ${config} 失败:`, error.message);
-              }
-            }
-          }
-        }
-        
       } catch (error) {
         console.warn('获取 Unix 环境变量失败:', error.message);
       }
@@ -372,6 +313,135 @@ function getSystemEnv() {
   }
 }
 
+// 获取用户 PATH 环境变量
+function getUserPath() {
+  try {
+    if (process.platform === 'win32') {
+      // 在 Windows 上获取用户 PATH
+      const output = execSync('powershell -Command "[Environment]::GetEnvironmentVariable(\'PATH\', \'User\')"', { encoding: 'utf8' });
+      return output.trim();
+    } else {
+      // 在 Unix 系统上，用户环境变量通常在 shell 配置文件中
+      // 尝试从常见的 shell 配置文件获取
+      const home = process.env.HOME || process.env.USERPROFILE;
+      if (home) {
+        const shellConfigs = [
+          path.join(home, '.bashrc'),
+          path.join(home, '.bash_profile'),
+          path.join(home, '.zshrc'),
+          path.join(home, '.profile'),
+          path.join(home, '.bash_login'),
+          path.join(home, '.zprofile')
+        ];
+        
+        let userPath = '';
+        
+        for (const config of shellConfigs) {
+          if (fs.existsSync(config)) {
+            try {
+              console.log(`读取配置文件: ${config}`);
+              const content = fs.readFileSync(config, 'utf8');
+              
+              // 查找 PATH 相关的配置
+              const pathMatches = content.match(/export\s+PATH\s*=\s*([^#\n]+)/g);
+              if (pathMatches) {
+                for (const match of pathMatches) {
+                  const pathValue = match.replace(/export\s+PATH\s*=\s*/, '').trim().replace(/['"]/g, '');
+                  console.log(`在 ${config} 中找到 PATH: ${pathValue}`);
+                  userPath += pathValue + ':';
+                }
+              }
+              
+              // 查找 PATH 追加的配置 (PATH=$PATH:...)
+              const pathAppendMatches = content.match(/export\s+PATH\s*=\s*\$PATH:([^#\n]+)/g);
+              if (pathAppendMatches) {
+                for (const match of pathAppendMatches) {
+                  const pathValue = match.replace(/export\s+PATH\s*=\s*\$PATH:/, '').trim().replace(/['"]/g, '');
+                  console.log(`在 ${config} 中找到 PATH 追加: ${pathValue}`);
+                  userPath += pathValue + ':';
+                }
+              }
+              
+            } catch (error) {
+              console.warn(`读取配置文件失败 ${config}:`, error.message);
+            }
+          }
+        }
+        
+        // 移除末尾的冒号
+        if (userPath.endsWith(':')) {
+          userPath = userPath.slice(0, -1);
+        }
+        
+        if (userPath) {
+          console.log(`合并后的用户 PATH: ${userPath}`);
+          return userPath;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn('获取用户 PATH 失败:', error.message);
+  }
+  return '';
+}
+
+// 从 shell 配置文件读取环境变量
+function getShellEnvVars() {
+  const envVars = {};
+  const home = process.env.HOME || process.env.USERPROFILE;
+  
+  if (!home) {
+    return envVars;
+  }
+  
+  const shellConfigs = [
+    path.join(home, '.bashrc'),
+    path.join(home, '.bash_profile'),
+    path.join(home, '.zshrc'),
+    path.join(home, '.profile'),
+    path.join(home, '.bash_login'),
+    path.join(home, '.zprofile')
+  ];
+  
+  for (const config of shellConfigs) {
+    if (fs.existsSync(config)) {
+      try {
+        console.log(`读取环境变量配置文件: ${config}`);
+        const content = fs.readFileSync(config, 'utf8');
+        
+        // 查找所有 export 语句
+        const exportMatches = content.match(/export\s+([^=]+)=([^#\n]+)/g);
+        if (exportMatches) {
+          for (const match of exportMatches) {
+            const parts = match.replace(/export\s+/, '').split('=');
+            if (parts.length >= 2) {
+              const key = parts[0].trim();
+              const value = parts.slice(1).join('=').trim().replace(/['"]/g, '');
+              
+              // 处理 PATH 的特殊情况
+              if (key === 'PATH') {
+                if (!envVars.PATH) {
+                  envVars.PATH = value;
+                } else {
+                  envVars.PATH += ':' + value;
+                }
+              } else {
+                envVars[key] = value;
+              }
+              
+              console.log(`在 ${config} 中找到环境变量: ${key}=${value}`);
+            }
+          }
+        }
+        
+      } catch (error) {
+        console.warn(`读取配置文件失败 ${config}:`, error.message);
+      }
+    }
+  }
+  
+  return envVars;
+}
 
 // 应用初始化函数
 async function initializeApp() {
@@ -420,48 +490,15 @@ async function initializeApp() {
     
     // 启动进程
     try {
-      // 获取系统环境变量，包括通过 source 加载的 shell 配置文件
+      // 获取系统环境变量，确保包含用户安装的 Node.js 路径
       const env = getSystemEnv();
       
-      // 确保重要的系统路径在 PATH 中
-      const importantPaths = [];
-      
-      if (process.platform === 'win32') {
-        // Windows 重要路径
-        importantPaths.push(
-          'C:\\Program Files\\nodejs',
-          'C:\\Program Files (x86)\\nodejs',
-          path.join(process.env.APPDATA || '', 'npm'),
-          path.join(process.env.USERPROFILE || '', 'AppData\\Roaming\\npm')
-        );
-      } else {
-        // Unix 系统重要路径
-        importantPaths.push(
-          '/usr/local/bin',      // 用户安装的软件
-          '/usr/local/sbin',     // 用户安装的系统管理工具
-          '/usr/bin',            // 系统软件
-          '/usr/sbin',           // 系统管理工具
-          '/opt/homebrew/bin',   // Homebrew (Apple Silicon Mac)
-          '/opt/local/bin',      // MacPorts
-          '/opt/nodejs/bin',     // 某些 Linux 发行版的 Node.js
-          path.join(process.env.HOME || '', '.npm-global/bin'),
-          path.join(process.env.HOME || '', '.nvm/versions/node/current/bin'),
-          path.join(process.env.HOME || '', '.local/bin')
-        );
-      }
-      
-      // 检查并添加重要的路径
-      const existingImportantPaths = importantPaths.filter(p => fs.existsSync(p));
-      if (existingImportantPaths.length > 0) {
-        console.log('添加重要系统路径:', existingImportantPaths);
-        
-        // 将重要路径添加到 PATH 的开头
-        const pathDelimiter = process.platform === 'win32' ? ';' : ':';
-        const currentPath = env.PATH || '';
-        const newPath = existingImportantPaths.join(pathDelimiter) + pathDelimiter + currentPath;
-        env.PATH = newPath;
-        
-        console.log('更新后的 PATH:', env.PATH);
+      // 获取用户 PATH 并合并
+      const userPath = getUserPath();
+      if (userPath) {
+        console.log('用户 PATH:', userPath);
+        // 将用户 PATH 添加到系统 PATH 前面
+        env.PATH = userPath + path.delimiter + (env.PATH || '');
       }
       
       // 确保一些重要的环境变量存在
@@ -469,7 +506,7 @@ async function initializeApp() {
       env.LANG = env.LANG || 'en_US.UTF-8';
       env.LC_ALL = env.LC_ALL || 'en_US.UTF-8';
       
-      console.log('使用 source 加载的环境变量');
+      console.log('使用合并后的环境变量');
       console.log('完整 PATH:', env.PATH);
       console.log('HOME:', env.HOME);
       console.log('PWD:', env.PWD);
@@ -477,7 +514,7 @@ async function initializeApp() {
       effluxProcess = spawn(execPath, [], { 
         detached: true,
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: env,  // 使用 source 加载的环境变量
+        env: env,  // 使用合并后的环境变量
         cwd: path.dirname(execPath)  // 设置工作目录为可执行文件所在目录
       });
       
@@ -573,10 +610,8 @@ function renderPage() {
     clearTimeout(time);
   }
 
-  // var url = isDev ? 'http://localhost:3000' : `http://47.236.204.213:3003`;
-  // mainWindow.loadURL(url);
-
-  startServer(mainWindow)
+  var url = isDev ? 'http://localhost:3000' : `http://47.236.204.213:3003`;
+  mainWindow.loadURL(url);
 
   if(isDev){
     mainWindow.webContents.openDevTools();
