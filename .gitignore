@@ -1,7 +1,13 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
+/client-web-efflux-frontend/
+/efflux_desktop.exe
+/efflux_desktop
+/.history
 /node_modules
+**/node_modules/
+**/.next/*
 /.pnp
 .pnp.js
 .yarn/install-state.gz

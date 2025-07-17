@@ -72,6 +72,24 @@
             animation: pulse 1.5s infinite;
         }
         
+        /* 日志按钮样式 */
+        .log-button {
+            position: fixed;
+            bottom: 0px;
+            left: 0px;
+            
+            color: #fff;
+            border: none;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            z-index: 1000;
+            width: 10px;
+            height: 10px;
+            background-color: #000;
+            opacity: 0;
+        }
+    
         @keyframes spin {
             0% {
                 transform: rotate(0deg);
@@ -110,5 +128,18 @@
         <div class="dot"></div>
         <div class="loading-text">Loading</div>
     </div>
+    
+    <!-- 日志文件按钮 -->
+    <button class="log-button" onclick="openLogFile()"></button>
+    
+    <script>
+        function openLogFile() {
+            if (window.electronAPI && window.electronAPI.openLogFile) {
+                window.electronAPI.openLogFile();
+            } else {
+                console.error('electronAPI 不可用');
+            }
+        }
+    </script>
 </body>
 </html>

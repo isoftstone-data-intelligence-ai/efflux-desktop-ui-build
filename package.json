@@ -1,6 +1,6 @@
 {
   "name": "client-efflux-frontend",
-  "version": "1.0.0",
+  "version": "0.3.2",
   "main": "./electron/main.js",
   "author": "benchu",
   "private": true,
@@ -10,12 +10,11 @@
     "dist": "electron-builder"
   },
   "dependencies": {
+    "next": "14.0.2",
     "electron-is-dev": "^1.2.0",
     "electron-store": "^6.0.1"
   },
   "devDependencies": {
-    "electron": "^28.2.0",
-    "electron-builder": "^24.9.1"
   },
   "build": {
     "asar": false,
@@ -25,10 +24,19 @@
     "extends": null,
     "files": [
       "electron/**/*",
+      "web-ui/**/*",
       "package.json"
     ],
     "extraResources": [
-      
+      {
+        "from": "efflux_desktop.exe",
+        "to": "efflux_desktop.exe"
+      },
+      {
+        "from": "web-ui/node_modules",
+        "to": "./app/node_modules",
+        "filter": ["**/*"]
+      }
     ],
     "directories": {
       "buildResources": "assets"
